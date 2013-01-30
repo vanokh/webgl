@@ -1,23 +1,23 @@
-<script id="per-fragment-lighting-fs" type="x-shader/x-fragment">
+<script id="texture-fs" type="x-shader/x-fragment">
 
-#include ".\pfLight.fs"
-
-</script>
-
-<script id="per-fragment-lighting-vs" type="x-shader/x-vertex">
-
-#include ".\pfLight.vs"
+#include ".\texLight.fs"
 
 </script>
 
-<script id="per-vertex-lighting-fs" type="x-shader/x-fragment">
+<script id="texture-vs" type="x-shader/x-vertex">
 
-#include ".\pvLight.fs"
+#include ".\texLight.vs"
 
 </script>
 
-<script id="per-vertex-lighting-vs" type="x-shader/x-vertex">
+<script id="color-fs" type="x-shader/x-fragment">
 
-#include ".\pvLight.vs"
+#include ".\colorLight.fs"
+
+</script>
+
+<script id="color-vs" type="x-shader/x-vertex">
+
+#include ".\colorLight.vs"
 
 </script>

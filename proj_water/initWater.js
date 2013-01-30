@@ -6,6 +6,7 @@ function initWaterBuffer(obj)
 	var vertexCount = (gridX + 1) * (gridY + 1);
 	var vertices = [];
 	var vertexNormals = [];
+	var vertexIndices = [];
 	var i;
 
 	obj.vertexPositionBuffer = gl.createBuffer();
@@ -19,16 +20,16 @@ function initWaterBuffer(obj)
 		-1.0, 0.0,  1.0,
     ];
     */
-    for (i = 0; i < gridY * gridX; i++)
+    for (i = 0; i < vertexCount; i++)
     {
-    	vertices[3*i]   = -1.0 + 2/gridX*i;
+    	vertices[3*i]   = -1.0 + 2.0/gridX*int(i % gridX);
     	vertices[3*i+1] = 0.0;
-    	vertices[3*i+2] = -1.0 + 2/gridY*i;
+    	vertices[3*i+2] = -1.0 + 2.0/gridY*int(i/gridY);
     }
 
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 	obj.vertexPositionBuffer.itemSize = 3;
-	obj.vertexPositionBuffer.numItems = 4;//24;
+	obj.vertexPositionBuffer.numItems = vertexCount;//4;//24;
 
 	obj.vertexNormalBuffer = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, obj.vertexNormalBuffer);
@@ -41,7 +42,7 @@ function initWaterBuffer(obj)
 		 0.0, 1.0,  0.0,
     ];
     */
-    for (i = 0; i < gridY * gridX; i++)
+    for (i = 0; i < vertexCount; i++)
     {
     	vertexNormals[3*i]   = 0.0;
     	vertexNormals[3*i+1] = 1.0;
@@ -51,7 +52,7 @@ function initWaterBuffer(obj)
 
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexNormals), gl.STATIC_DRAW);
 	obj.vertexNormalBuffer.itemSize = 3;
-	obj.vertexNormalBuffer.numItems = 4;//24;
+	obj.vertexNormalBuffer.numItems = vertexCount;//4;//24;
 
 	obj.vertexTextureCoordBuffer = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, obj.vertexTextureCoordBuffer);
@@ -68,10 +69,26 @@ function initWaterBuffer(obj)
 
 	obj.vertexIndexBuffer = gl.createBuffer();
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, obj.vertexIndexBuffer);
+	/*
 	var vertexIndices = [
 		0, 1, 2,      0, 2, 3,    // Bottom face
 	];
+	*/
+	i = 0;
+    for (y = 0; y < gridY; y++)
+    {
+	    for (x = 0; x < gridX; x++)
+    	{
+    		vertexIndices[i++] = (gridX+1)*y + x;
+    		vertexIndices[i++] = (gridX+1)*y + x + 1;
+	    	vertexIndices[i++] = (gridX+1)*(y+1) + x + 1;
+
+    		vertexIndices[i++] = (gridX+1)*y + x;
+    		vertexIndices[i++] = (gridX+1)*(y+1) + x;
+	    	vertexIndices[i++] = (gridX+1)*(y+1) + x + 1;
+    	}
+    }
 	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(vertexIndices), gl.STATIC_DRAW);
 	obj.vertexIndexBuffer.itemSize = 1;
-	obj.vertexIndexBuffer.numItems = 6;//36;
+	obj.vertexIndexBuffer.numItems = gridX * gridY * 2//6;//36;
 }

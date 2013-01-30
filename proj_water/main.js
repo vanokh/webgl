@@ -93,12 +93,11 @@
 
 
     var currentProgram;
-    var perVertexProgram;
-    var perFragmentProgram;
+    var textureProgram;
+    var colorProgram;
 
     function initShaders() {
-        perVertexProgram = createProgram("per-vertex-lighting-fs", "per-vertex-lighting-vs");
-        perFragmentProgram = createProgram("per-fragment-lighting-fs", "per-fragment-lighting-vs");
+        textureProgram = createProgram("texture-fs", "texture-vs");
     }
 
 
