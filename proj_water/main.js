@@ -67,37 +67,98 @@
             alert("Could not initialise shaders");
         }
 
-        program.vertexPositionAttribute = gl.getAttribLocation(program, "aVertexPosition");
+        return program;
+    }
+
+    function initProgram_Vertex(program, obj) {
+        program.vertexPositionAttribute = gl.getAttribLocation(program, "position");
         gl.enableVertexAttribArray(program.vertexPositionAttribute);
+        gl.bindBuffer(gl.ARRAY_BUFFER, obj.vertexPositionBuffer);
+        gl.vertexAttribPointer(program.vertexPositionAttribute, obj.vertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
-        program.vertexNormalAttribute = gl.getAttribLocation(program, "aVertexNormal");
+        program.vertexNormalAttribute = gl.getAttribLocation(program, "normal");
         gl.enableVertexAttribArray(program.vertexNormalAttribute);
+        gl.bindBuffer(gl.ARRAY_BUFFER, obj.vertexNormalBuffer);
+        gl.vertexAttribPointer(program.vertexNormalAttribute, obj.vertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
-        program.textureCoordAttribute = gl.getAttribLocation(program, "aTextureCoord");
+        program.textureCoordAttribute = gl.getAttribLocation(program, "texcoord");
         gl.enableVertexAttribArray(program.textureCoordAttribute);
-
+        gl.bindBuffer(gl.ARRAY_BUFFER, obj.vertexTextureCoordBuffer);
+        gl.vertexAttribPointer(program.textureCoordAttribute, obj.vertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+    }
+        /*
         program.pMatrixUniform = gl.getUniformLocation(program, "uPMatrix");
         program.mvMatrixUniform = gl.getUniformLocation(program, "uMVMatrix");
         program.nMatrixUniform = gl.getUniformLocation(program, "uNMatrix");
         program.samplerUniform = gl.getUniformLocation(program, "uSampler");
-        //program.colorUniform = gl.getUniformLocation(program, "uColor");
-        //program.useColorUniform = gl.getUniformLocation(program, "uUseColor");
         program.useTexturesUniform = gl.getUniformLocation(program, "uUseTextures");
         program.useLightingUniform = gl.getUniformLocation(program, "uUseLighting");
+        
         program.ambientColorUniform = gl.getUniformLocation(program, "uAmbientColor");
         program.pointLightingLocationUniform = gl.getUniformLocation(program, "uPointLightingLocation");
         program.pointLightingColorUniform = gl.getUniformLocation(program, "uPointLightingColor");
-
-        return program;
+        */
+    function initProgram_Light(program, light) {    
+        // установка параметров точечного источника света
+        gl.uniform3f(gl.getUniformLocation(program, "light.position"),
+            light.positionX, light.positionY, light.positionZ);
+        gl.uniform3f(gl.getUniformLocation(program, "light.ambient"),
+            light.acolorR, light.acolorG, light.acolorB, 1.0);
+        gl.uniform3f(gl.getUniformLocation(program, "light.diffuse");
+            light.pcolorR, light.pcolorG, light.pcolorB, 1.0);
+        gl.uniform3f(gl.getUniformLocation(program, "light.specular");
+            light.pcolorR, light.pcolorG, light.pcolorB, 1.0);
+        gl.uniform1f(gl.getUniformLocation(program, "light.attenuation"), 1.0);
     }
 
+    function initProgram_Material(program, obj)
+        // установка параметров материала
+        if (obj.texture)
+        {
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, obj.texture);
+            gl.uniform1i(gl.getUniformLocation(program, "material.texture"), 0);
+            gl.uniform1i(gl.getUniformLocation(program, "useTexture"), 1);
+        }
+        else
+        {
+            gl.uniform1i(gl.getUniformLocation(program, "useTexture"), 0);
+        }
+        
+        gl.uniform3f(gl.getUniformLocation(program, "material.ambient"), 
+            obj.colorR, obj.colorG, obj.colorB, obj.colorA);
+        gl.uniform3f(gl.getUniformLocation(program, "material.diffuse"), 
+            obj.colorR, obj.colorG, obj.colorB, obj.colorA);
+        gl.uniform3f(gl.getUniformLocation(program, "material.specular"), 
+            obj.colorR, obj.colorG, obj.colorB, obj.colorA);
+        gl.uniform3f(gl.getUniformLocation(program, "material.emission"), 0.0, 0.0, 0.0);
+        gl.uniform1f(gl.getUniformLocation(program, "material.shininess"), 0.5);
+    }
+    
+    function initProgram_Transform(program, transform) {    
+        // передаем матрицы в шейдерную программу
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, "transform.model")
+            false, transform.model);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, "transform.viewProjection"), 
+            false, transform.viewProjection);
+
+        transform.normal = mat3.create();
+        mat4.toInverseMat3(transform.model, transform.normal);
+        mat3.transpose(transform.normal);
+        gl.uniformMatrix3fv(gl.getUniformLocation(program, "transform.normal"), 
+            false, transform.normal);
+
+        // передаем позицию наблюдателя (камеры) в шейдерную программу
+        gl.getUniformLocation(program, "transform.viewPosition");
+    }
 
     var currentProgram;
     var textureProgram;
     var colorProgram;
 
     function initShaders() {
-        textureProgram = createProgram("texture-fs", "texture-vs");
+        currentProgram = createProgram("texture-fs", "texture-vs");
+        //textureProgram = createProgram("color-fs", "color-vs");
     }
 
 
@@ -112,9 +173,12 @@
         gl.bindTexture(gl.TEXTURE_2D, null);
     }
 
-	var cube = new Object();
-	var floor = new Object();
-	var water = new Object();
+	var cube       = new Object();
+	var floor      = new Object();
+	var water      = new Object();
+
+    var light      = new Object();
+    var transform  = new Object();
 
     var waterTexture;
     var crateTexture;
@@ -140,19 +204,25 @@
         water.texture_src = "water.jpg";
         loadTexture(water);
 
-		cube.color = 0xffa0a0a0;
-		floor.color = 0xffa0a0a0
-		water.color = 0x7fceb952;
+		cube.colorR = 0xa0;
+        cube.colorG = 0xa0;
+        cube.colorB = 0xa0;
+        cube.colorA = 0xff;
+        floor.colorR = 0xa0;
+        floor.colorG = 0xa0;
+        floor.colorB = 0xa0;
+        floor.colorA = 0xff;
+		water.colorR = 0x52;
+        water.colorG = 0xb9;
+        water.colorB = 0xce;
+        water.colorA = 0x7f;
 	}
 
-
-    var mvMatrix = mat4.create();
     var mvMatrixStack = [];
-    var pMatrix = mat4.create();
 
-    function mvPushMatrix() {
+    function mvPushMatrix(m) {
         var copy = mat4.create();
-        mat4.set(mvMatrix, copy);
+        mat4.set(m, copy);
         mvMatrixStack.push(copy);
     }
 
@@ -160,17 +230,7 @@
         if (mvMatrixStack.length == 0) {
             throw "Invalid popMatrix!";
         }
-        mvMatrix = mvMatrixStack.pop();
-    }
-
-    function setMatrixUniforms() {
-        gl.uniformMatrix4fv(currentProgram.pMatrixUniform, false, pMatrix);
-        gl.uniformMatrix4fv(currentProgram.mvMatrixUniform, false, mvMatrix);
-
-        var normalMatrix = mat3.create();
-        mat4.toInverseMat3(mvMatrix, normalMatrix);
-        mat3.transpose(normalMatrix);
-        gl.uniformMatrix3fv(currentProgram.nMatrixUniform, false, normalMatrix);
+        return mvMatrixStack.pop();
     }
 
 
@@ -185,41 +245,20 @@
     }
 
 	function drawBuffers(obj) {
-        mvPushMatrix();
-        mat4.rotate(mvMatrix, degToRad(cubeAngle), [0, 1, 0]);
-        mat4.translate(mvMatrix, [1.25, 0, 0]);
-        gl.bindBuffer(gl.ARRAY_BUFFER, obj.vertexPositionBuffer);
-        gl.vertexAttribPointer(currentProgram.vertexPositionAttribute, obj.vertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+        mvPushMatrix(transform.model);
+        mat4.rotate(transform.model, degToRad(cubeAngle), [0, 1, 0]);
+        mat4.translate(transform.model, [1.25, 0, 0]);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, obj.vertexNormalBuffer);
-        gl.vertexAttribPointer(currentProgram.vertexNormalAttribute, obj.vertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0);
+        initProgram_Vertex(currentProgram, obj);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, obj.vertexTextureCoordBuffer);
-        gl.vertexAttribPointer(currentProgram.textureCoordAttribute, obj.vertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-		if (obj.texture)
-		{
-			gl.activeTexture(gl.TEXTURE0);
-			gl.bindTexture(gl.TEXTURE_2D, obj.texture);
-			gl.uniform1i(currentProgram.samplerUniform, 0);
-			//gl.uniform1i(currentProgram.useColorUniform, 0);
-		}
-		/*else
-		{
-			var r =	(obj.color & 0xff) / 256.0;
-			var g =	(obj.color >> 8 & 0xff) / 256.0;
-			var b =	(obj.color >> 16 & 0xff) / 256.0;
-			var a =	(obj.color >> 24 & 0xff) / 256.0;
-			gl.uniform1i(
-				currentProgram.colorUniform, r, g, b, a
-			);
-			gl.uniform1i(currentProgram.useColorUniform, 1);
-		}*/
+        initProgram_Material(currentProgram, obj);
 		
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, obj.vertexIndexBuffer);
-        setMatrixUniforms();
+        
+        initProgram_Transform(currentProgram, transform);
+
         gl.drawElements(gl.TRIANGLES, obj.vertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
-        mvPopMatrix();
+        transform.model = mvPopMatrix();
 	}
 	
     var cubeAngle = 0;
@@ -228,9 +267,8 @@
         gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+        mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, transform.viewProjection);
 
-        currentProgram = perFragmentProgram;
         gl.useProgram(currentProgram);
 
         //gl.blendFunc(gl.ONE, gl.ONE);
@@ -238,40 +276,27 @@
         gl.enable(gl.BLEND);
         gl.disable(gl.DEPTH_TEST);
 
-		var lighting = document.getElementById("lighting").checked;
-        gl.uniform1i(currentProgram.useLightingUniform, lighting);
-        if (lighting) {
-            gl.uniform3f(
-                currentProgram.ambientColorUniform,
-                parseFloat(document.getElementById("ambientR").value),
-                parseFloat(document.getElementById("ambientG").value),
-                parseFloat(document.getElementById("ambientB").value)
-            );
+        light.acolorR = parseFloat(document.getElementById("ambientR").value),
+        light.acolorG = parseFloat(document.getElementById("ambientG").value),
+        light.acolorB = parseFloat(document.getElementById("ambientB").value)
 
-            gl.uniform3f(
-                currentProgram.pointLightingLocationUniform,
-                parseFloat(document.getElementById("lightPositionX").value),
-                parseFloat(document.getElementById("lightPositionY").value),
-                parseFloat(document.getElementById("lightPositionZ").value)
-            );
+        light.positionX = parseFloat(document.getElementById("lightPositionX").value),
+        light.positionY = parseFloat(document.getElementById("lightPositionY").value),
+        light.positionZ = parseFloat(document.getElementById("lightPositionZ").value)
 
-            gl.uniform3f(
-                currentProgram.pointLightingColorUniform,
-                parseFloat(document.getElementById("pointR").value),
-                parseFloat(document.getElementById("pointG").value),
-                parseFloat(document.getElementById("pointB").value)
-            );
-        }
+        light.pcolorR = parseFloat(document.getElementById("pointR").value),
+        light.pcolorG = parseFloat(document.getElementById("pointG").value),
+        light.pcolorB = parseFloat(document.getElementById("pointB").value)
 
+        /*
         var textures = document.getElementById("textures").checked;
         gl.uniform1i(currentProgram.useTexturesUniform, textures);
+        */
 
-        mat4.identity(mvMatrix);
-
-        mat4.translate(mvMatrix, [0, 0, -5]);
-
-        mat4.rotate(mvMatrix, degToRad(30), [1, 0, 0]);
-
+        mat4.identity(transform.model);
+        mat4.translate(transform.model, [0, 0, -5]);
+        mat4.rotate(transform.model, degToRad(30), [1, 0, 0]);
+        
         drawBuffers(cube);
         drawBuffers(floor);
         drawBuffers(water);
@@ -299,11 +324,14 @@
 
 
     function webGLStart() {
-        var canvas = document.getElementById("lesson13-canvas");
+        var canvas = document.getElementById("wgl-canvas");
         initGL(canvas);
         initShaders();
         initBuffers();
         initTextures();
+
+        transform.model = mat4.create();
+        transform.viewProjection = mat4.create();
 
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.enable(gl.DEPTH_TEST);
